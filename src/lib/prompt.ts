@@ -64,6 +64,7 @@ export async function getTokens(labels, metadata) {
       description: labels[label],
       type: 'Token',
       conform: value => {
+        console.log('token value', value,patterns.Address.test(value))
         if (patterns.Address.test(value)) {
           return value in metadata.byAddress
         }
@@ -140,6 +141,9 @@ export async function getTokenList(metadata, label) {
 }
 
 export async function printOrder(ctx: any, request: any, order: any, wallet: any, metadata: any) {
+  console.log('input order',JSON.stringify(order) )
+  console.log('input request',JSON.stringify(request) )
+
   const signerAmountDecimal = new BigNumber(order.signer ? order.signer.amount : order.signerAmount)
     .dividedBy(new BigNumber(10).pow(request.signerToken.decimals))
     .toFixed()

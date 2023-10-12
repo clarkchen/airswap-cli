@@ -14,6 +14,7 @@ import { printOrder, confirm } from './prompt'
 
 import { toDecimalString, orderERC20ToParams } from '@airswap/utils'
 import { getKnownTokens } from '@airswap/metadata'
+import {chain} from "mathjs";
 
 const Swap = require('@airswap/swap-erc20/build/contracts/SwapERC20.sol/SwapERC20.json')
 const swapDeploys = require('@airswap/swap-erc20/deploys.js')
@@ -49,12 +50,14 @@ export async function updateConfig(ctx: any, config: any) {
 
 export async function getChainId(ctx: any): Promise<string> {
   const { chainId } = await getConfig(ctx)
+  console.log('chain id', chainId)
   return chainId || ChainIds.GOERLI
 }
 
 export async function getNodeURL(ctx): Promise<string> {
   const chainId = await getChainId(ctx)
   let apiUrl = apiUrls[chainId]
+  return "http://provider.eth.exe.arbi-tools.com:3335"
   if (apiUrl.indexOf('infura.io') !== -1) {
     apiUrl += `/${INFURA_ID}`
   }
@@ -69,7 +72,10 @@ export async function getProvider(ctx: any) {
 
 export async function getMetadata(ctx: any, chainId: number) {
   const selectedChain = chainNames[chainId]
+  console.log('selectedChain', selectedChain)
   const metadataPath = path.join(ctx.config.configDir, `metadata-${selectedChain}.json`)
+  console.log('metadataPath', metadataPath)
+
   if (!(await fs.pathExists(metadataPath))) {
     ctx.log(chalk.yellow('\nFetching remote metadata'))
     await updateMetadata(ctx, chainId)
@@ -131,11 +137,15 @@ export async function getGasPrice(ctx: any, asGwei?: boolean) {
 }
 
 export function getAtomicValue(value: string, token: string, metadata: any) {
-  return new BigNumber(value).multipliedBy(new BigNumber(10).pow(metadata.byAddress[token.toLowerCase()].decimals))
+  console.log('info', metadata.byAddress[token])
+  return new BigNumber(value).multipliedBy(new BigNumber(10).pow(metadata.byAddress[token].decimals))
 }
 
 export function getDecimalValue(value: string, token: string, metadata: any) {
-  return new BigNumber(value).dividedBy(new BigNumber(10).pow(metadata.byAddress[token.toLowerCase()].decimals))
+  token = ethers.utils.getAddress(token)
+
+  console.log('info', token, metadata.byAddress[token], metadata.byAddress[token.toLowerCase()])
+  return new BigNumber(value).dividedBy(new BigNumber(10).pow(metadata.byAddress[token].decimals))
 }
 
 export async function getBalanceChanges(order: any, wallet: any, metadata: any) {
@@ -216,6 +226,7 @@ export async function handleResponse(
     if (!(await printOrder(ctx, request, order, wallet, metadata))) {
       ctx.log(`${chalk.yellow('Unable to take')}: your token balance is insufficient.\n\n`)
     } else if (
+        // true
       await confirm(
         ctx,
         metadata,
@@ -236,8 +247,15 @@ export async function handleResponse(
         'take this order',
       )
     ) {
+      console.log('start', JSON.stringify(orderERC20ToParams(order)))
+      let provider  =  await getProvider(ctx)
+      let nonce = await provider.getTransactionCount(order.signerWallet,)
+      // nonce =3
+      console.log('nonce', nonce.toString(), gasPrice.toString())
+
+      // gasPrice  =ethers.utils.parseUnits('10','gwei')
       new ethers.Contract(swapDeploys[chainId], Swap.abi, wallet)
-        .swapLight(...orderERC20ToParams(order), { gasPrice })
+        .swapLight(...orderERC20ToParams(order), { gasPrice, gasLimit:1000_000 , nonce})
         .then(handleTransaction)
         .catch(handleError)
     }

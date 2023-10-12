@@ -9,8 +9,11 @@ export default class OrderGet extends Command {
   public static description = 'get an order from a peer'
   public async run() {
     try {
+      console.log('rfg get start')
       const wallet = await getWallet(this)
+      console.log('wallet', wallet.address)
       const chainId = (await wallet.provider.getNetwork()).chainId
+
       const metadata = await utils.getMetadata(this, chainId)
       const gasPrice = await utils.getGasPrice(this)
       utils.displayDescription(this, OrderGet.description, chainId)
@@ -22,7 +25,7 @@ export default class OrderGet extends Command {
       })
       const request = await requests.getRequest(wallet, metadata, 'Order')
       this.log()
-
+      this.log('start query', request.params)
       requests.peerCall(
         locator,
         request.method,
